@@ -1,0 +1,24 @@
+services:
+  agent:
+    build: .
+    ports:
+      - "127.0.0.1:${AGENT_HTTP_PORT:-8092}:8092"
+    environment:
+      FINTRY_MODE: ${FINTRY_MODE:-demo}
+      AI_PROVIDER: ${AI_PROVIDER:-simulated}
+      FINTRY_BASE_URL: ${FINTRY_BASE_URL:-http://host.docker.internal:8080}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.openai.com}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-gpt-4o-mini}
+      AGENT_TIMEOUT_SECONDS: ${AGENT_TIMEOUT_SECONDS:-20}
+      AGENT_MAX_TOOLS: ${AGENT_MAX_TOOLS:-3}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#153a32" />
+    <title>Fintry · Assistente financeiro</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside>
+        <a class="brand" href="./" aria-label="Fintry AI Agent"
+          ><span class="brand-icon">f.</span> fintry
+          <span class="ai">AI</span></a
+        >
+        <div class="aside-content">
+          <span class="eyebrow">CLAREZA PARA DECIDIR</span>
+          <h1>Suas finanças,<br />em uma conversa.</h1>
+          <p>
+            Consulte os números, entenda os próximos dias e veja de onde vem
+            cada resposta.
+          </p>
+          <div class="scope">
+            <span class="scope-icon">↗</span>
+            <div>
+              <strong>Um olhar sobre o seu caixa</strong>
+              <p>
+                Saldo, movimentações, vencimentos e projeções em um só lugar.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="aside-footer">
+          <span class="dot"></span> Apenas consultas · Seus dados sob controle
+        </div>
+      </aside>
+      <main>
+        <header>
+          <div>
+            <span class="eyebrow">SEU ASSISTENTE FINANCEIRO</span>
+            <h2>Vamos olhar seus números?</h2>
+          </div>
+          <span class="badge">Somente leitura</span>
+        </header>
+        <div id="mode" class="mode" role="status">Verificando ambiente…</div>
+        <section
+          id="conversation"
+          class="conversation"
+          aria-label="Conversa"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
+          <article class="welcome">
+            <span class="avatar">f.</span>
+            <div>
+              <h3>Olá! Por onde começamos?</h3>
+              <p>
+                Faça uma pergunta sobre suas finanças. As respostas incluem o
+                período consultado e as fontes usadas.
+              </p>
+            </div>
+          </article>
+          <div class="suggestions" aria-label="Sugestões de perguntas">
+            <button type="button" data-question="Qual é meu saldo disponível?">
+              <span>01</span> Qual é meu saldo disponível? <b>↗</b>
+            </button>
+            <button
+              type="button"
+              data-question="Quais contas vencem nos próximos sete dias?"
+            >
+              <span>02</span> O que vence nos próximos sete dias? <b>↗</b>
+            </button>
+            <button
+              type="button"
+              data-question="Quanto entrou e saiu neste mês?"
+            >
+              <span>03</span> Quanto entrou e saiu neste mês? <b>↗</b>
+            </button>
+            <button
+              type="button"
+              data-question="Como está meu fluxo de caixa previsto?"
+            >
+              <span>04</span> Como está meu caixa previsto? <b>↗</b>
+            </button>
+          </div>
+        </section>
+        <div class="composer-wrap">
+          <p id="status" role="status"></p>
+          <form id="chat-form">
+            <label class="sr-only" for="message">Sua pergunta financeira</label
+            ><textarea
+              id="message"
+              placeholder="Pergunte sobre suas finanças…"
+              maxlength="2000"
+              rows="2"
+              required
+            ></textarea>
+            <div class="composer-bottom">
+              <span id="counter">0 / 2000</span
+              ><button id="send" type="submit" disabled>
+                Enviar <span>↑</span>
+              </button>
+            </div>
+          </form>
+          <p class="footnote">
+            Horário de Brasília · Confira as fontes e limitações de cada
+            consulta.
+          </p>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
