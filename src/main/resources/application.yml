@@ -1,0 +1,35 @@
+server:
+  port: ${PORT:8092}
+  tomcat:
+    connection-timeout: 10s
+  servlet:
+    session:
+      timeout: 15m
+      cookie:
+        name: FINTRY_AGENT_SESSION
+        http-only: true
+        secure: ${COOKIE_SECURE:false}
+        same-site: strict
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  application:
+    name: fintry-ai-agent
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+agent:
+  integration: ${FINTRY_MODE:demo}
+  provider: ${AI_PROVIDER:simulated}
+  timeout-seconds: ${AGENT_TIMEOUT_SECONDS:20}
+  max-tools: ${AGENT_MAX_TOOLS:3}
+  fintry-base-url: ${FINTRY_BASE_URL:http://localhost:8080}
+  ai-base-url: ${AI_BASE_URL:https://api.openai.com}
+  ai-api-key: ${AI_API_KEY:}
+  ai-model: ${AI_MODEL:gpt-4o-mini}
+logging:
+  level:
+    org.springframework.ai: OFF
+    org.springframework.web.client: OFF
+    org.springframework.web: WARN
