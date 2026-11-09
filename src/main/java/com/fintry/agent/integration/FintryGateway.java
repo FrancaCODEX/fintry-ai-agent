@@ -1,6 +1,7 @@
 package com.fintry.agent.integration;
 
 import com.fintry.agent.integration.FinancialData.*;
+import com.fintry.agent.tools.ToolRequest.DueWindow;
 import java.time.YearMonth;
 
 public interface FintryGateway {
@@ -8,7 +9,7 @@ public interface FintryGateway {
 
   Summary summary(UserContext user, YearMonth month);
 
-  Pending pending(UserContext user);
+  Pending pending(UserContext user, DueWindow window);
 
   Forecast forecast(UserContext user, int days);
 }

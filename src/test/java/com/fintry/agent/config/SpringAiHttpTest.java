@@ -21,7 +21,7 @@ class SpringAiHttpTest {
         exchange -> {
           captured.set(
               new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
-          String content = "{\"queries\":[{\"kind\":\"BALANCE\",\"month\":null,\"days\":null}]}";
+          String content = "{\"decision\":\"QUERY\",\"queries\":[{\"kind\":\"BALANCE\",\"month\":null,\"days\":null,\"window\":null}]}";
           var json = new ObjectMapper();
           String body =
               "{\"id\":\"test\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"contract-model\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":"
@@ -43,7 +43,7 @@ class SpringAiHttpTest {
                   "contract-test-placeholder",
                   "contract-model",
                   "http://127.0.0.1:" + server.getAddress().getPort());
-      var plan = provider.plan("Qual é meu saldo disponível?", LocalDate.of(2026, 11, 6));
+      var plan = provider.plan("Qual é meu saldo disponível?", LocalDate.of(2026, 11, 6), java.util.List.of());
       assertThat(plan.queries())
           .singleElement()
           .satisfies(q -> assertThat(q.kind()).isEqualTo(Kind.BALANCE));

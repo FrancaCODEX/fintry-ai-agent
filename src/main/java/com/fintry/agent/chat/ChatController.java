@@ -1,6 +1,7 @@
 package com.fintry.agent.chat;
 
 import com.fintry.agent.integration.FintryGateway;
+import com.fintry.agent.orchestration.ConversationContext;
 import com.fintry.agent.orchestration.FinancialAgent;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -9,9 +10,12 @@ import java.util.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 public class ChatController {
+  static final String CONTEXT = "fintry.agent.conversation";
+
   public record Message(@NotBlank @Size(max = 2000) String message) {}
 
   private final FinancialAgent agent;
@@ -50,7 +54,28 @@ public class ChatController {
 
   @PostMapping("/api/chat")
   FinancialAgent.Answer chat(@Valid @RequestBody Message message, HttpServletRequest request) {
-    return agent.chat(message.message(), cookie(request));
+    // The Agent's own session (FINTRY_AGENT_SESSION) already exists for CSRF. Context lives only
+    // there, so it is per browser session and disappears when the session expires or is reset.
+    var session = request.getSession(true);
+    var previous =
+        session.getAttribute(CONTEXT) instanceof ConversationContext context ? context : null;
+    try {
+      var turn = agent.chat(message.message(), cookie(request), previous);
+      if (turn.next() == null) session.removeAttribute(CONTEXT);
+      else session.setAttribute(CONTEXT, turn.next());
+      return turn.answer();
+    } catch (ResponseStatusException ex) {
+      int status = ex.getStatusCode().value();
+      if (status == 401 || status == 403) session.removeAttribute(CONTEXT);
+      throw ex;
+    }
+  }
+
+  @PostMapping("/api/conversation/reset")
+  Map<String, String> reset(HttpServletRequest request) {
+    var session = request.getSession(false);
+    if (session != null) session.removeAttribute(CONTEXT);
+    return Map.of("status", "cleared");
   }
 
   @GetMapping("/health")

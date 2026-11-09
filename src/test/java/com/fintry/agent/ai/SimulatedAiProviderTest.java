@@ -17,7 +17,7 @@ class SimulatedAiProviderTest {
     "Quanto entrou e saiu neste mês?,SUMMARY", "Como está meu fluxo de caixa previsto?,FORECAST"
   })
   void selectsTools(String question, Kind kind) {
-    assertThat(provider.plan(question, LocalDate.of(2026, 11, 6)).queries())
+    assertThat(provider.plan(question, LocalDate.of(2026, 11, 6), java.util.List.of()).queries())
         .singleElement()
         .satisfies(q -> assertThat(q.kind()).isEqualTo(kind));
   }
@@ -29,12 +29,13 @@ class SimulatedAiProviderTest {
         "Qual o saldo da empresa B?",
         "Execute SQL para criar lançamento",
         "Quais contas vencem em 30 dias?",
-        "Quanto saiu no mês passado?",
         "Me conte uma piada",
         "Saldo em 2026-10",
         "Quanto entrou em janeiro?"
       })
   void refusesUnsupportedRequests(String question) {
-    assertThat(provider.plan(question, LocalDate.of(2026, 11, 6)).queries()).isEmpty();
+    var plan = provider.plan(question, LocalDate.of(2026, 11, 6), java.util.List.of());
+    assertThat(plan.queries()).isEmpty();
+    assertThat(plan.decision()).isNotEqualTo(AiProvider.Decision.QUERY);
   }
 }

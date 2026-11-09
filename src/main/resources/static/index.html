@@ -43,9 +43,16 @@
             <span class="eyebrow">SEU ASSISTENTE FINANCEIRO</span>
             <h2>Vamos olhar seus números?</h2>
           </div>
-          <span class="badge">Somente leitura</span>
+          <div class="header-actions">
+            <span class="badge">Somente leitura</span>
+            <button id="reset" type="button" class="ghost" disabled>
+              Nova conversa
+            </button>
+          </div>
         </header>
-        <div id="mode" class="mode" role="status">Verificando ambiente…</div>
+        <div id="mode" class="mode" role="status" aria-label="Ambiente">
+          Verificando ambiente…
+        </div>
         <section
           id="conversation"
           class="conversation"
@@ -85,6 +92,15 @@
             >
               <span>04</span> Como está meu caixa previsto? <b>↗</b>
             </button>
+            <button type="button" data-question="Quais contas estão vencidas?">
+              <span>05</span> Quais contas estão vencidas? <b>↗</b>
+            </button>
+            <button
+              type="button"
+              data-question="Compare este mês com o anterior"
+            >
+              <span>06</span> Compare este mês com o anterior <b>↗</b>
+            </button>
           </div>
         </section>
         <div class="composer-wrap">
@@ -96,18 +112,19 @@
               placeholder="Pergunte sobre suas finanças…"
               maxlength="2000"
               rows="2"
+              aria-describedby="composer-hint counter"
               required
             ></textarea>
             <div class="composer-bottom">
-              <span id="counter">0 / 2000</span
+              <span id="counter" aria-live="off">0 / 2000</span
               ><button id="send" type="submit" disabled>
                 Enviar <span>↑</span>
               </button>
             </div>
           </form>
-          <p class="footnote">
-            Horário de Brasília · Confira as fontes e limitações de cada
-            consulta.
+          <p class="footnote" id="composer-hint">
+            Enter envia · Shift+Enter quebra a linha · Horário de Brasília ·
+            Confira as fontes e limitações de cada consulta.
           </p>
         </div>
       </main>
