@@ -3,6 +3,7 @@ package com.fintry.agent.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fintry.agent.integration.FinancialData.*;
+import com.fintry.agent.tools.ToolRequest.DueWindow;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.*;
@@ -81,6 +82,14 @@ public final class HttpFintryGateway implements FintryGateway {
     return value.decimalValue();
   }
 
+  /** Absent stays null so callers that need it fail explicitly; malformed is incompatible. */
+  private java.math.BigDecimal optionalMoney(JsonNode node, String field) {
+    var value = node.get(field);
+    if (value == null || value.isNull()) return null;
+    if (!value.isNumber()) throw unavailable();
+    return value.decimalValue();
+  }
+
   public UserContext authenticate(String cookie) {
     var me = get("/api/v1/auth/me", cookie);
     try {
@@ -118,21 +127,25 @@ public final class HttpFintryGateway implements FintryGateway {
         money(data, "balance"),
         money(data, "income"),
         money(data, "expense"),
-        money(data, "result"));
+        money(data, "result"),
+        optionalMoney(data, "previousIncome"),
+        optionalMoney(data, "previousExpense"),
+        optionalMoney(data, "previousResult"));
   }
 
-  public Pending pending(UserContext user) {
+  public Pending pending(UserContext user, DueWindow window) {
     verify(user);
     var data =
         get(
-            "/api/v1/finance/pending?group=NEXT7&type=EXPENSE&page=0&size=20",
+            "/api/v1/finance/pending?group=" + window.name() + "&type=EXPENSE&page=0&size=20",
             user.sessionCookie());
     try {
       var items = data.get("content");
       if (items == null
           || !items.isArray()
           || items.size() > 20
-          || !data.path("totalElements").isIntegralNumber()) throw unavailable();
+          || !data.path("totalElements").isIntegralNumber()
+          || !window.name().equals(data.path("group").asText())) throw unavailable();
       var out = new ArrayList<PendingItem>();
       for (var item : items)
         out.add(
@@ -141,6 +154,7 @@ public final class HttpFintryGateway implements FintryGateway {
                 LocalDate.parse(text(item, "dueDate")),
                 money(item, "remainingAmount")));
       return new Pending(
+          window,
           LocalDate.parse(text(data, "today")),
           List.copyOf(out),
           data.get("totalElements").longValue(),

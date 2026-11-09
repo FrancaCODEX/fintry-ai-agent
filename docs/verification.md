@@ -1,4 +1,21 @@
-# Verificação da primeira entrega
+# Verificação da versão 0.2
+
+Data: 9 de novembro de 2026, horário de Brasília. Ambiente Linux na nuvem, JDK 21.
+
+| Fronteira | Evidência |
+| --- | --- |
+| Suíte | `./mvnw -B verify`: 72 testes, 0 falhas; 1 ignorado de propósito (avaliação paga) |
+| Avaliação versionada | 47/47 casos com o provedor simulado |
+| Browser → Agent → demonstração | Chromium headless (Playwright), 1365×900 e iPhone 13: saldo, resumo, continuação “E no mês anterior?”, esclarecimento, recusa de escrita, vencidas + hoje, 504 simulado com **Tentar novamente**, *Nova conversa* apagando o contexto; sem overflow horizontal; o único erro de console foi o 504 injetado |
+| Configuração | `node --check app.js`; `docker compose config --quiet` |
+| Imagem Docker | **Não validada localmente**: o ambiente não tinha daemon Docker. O CI do PR executa o build |
+| Repositório de referência | Apenas lido (commit `9c6c099`); nada alterado |
+
+Não houve chamada paga a modelo nem acesso a Fintry ou dados reais. A homologação real continua pendente.
+
+---
+
+## Verificação da primeira entrega (0.1)
 
 Data: 6 de novembro de 2026, horário de Brasília.
 

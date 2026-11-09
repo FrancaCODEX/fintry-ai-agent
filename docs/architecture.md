@@ -45,3 +45,33 @@ Não usamos API de IA paga nos testes. Não presumimos que testes de contrato su
 **Por que não colocar todo o extrato no prompt?** Não é necessário para escolher consultas e aumenta custo/exposição. Não enviamos resultados financeiros ao provedor nesta versão.
 
 **O que você ainda não consegue afirmar?** Que a integração foi homologada com uma instância e contas reais, ou que determinado modelo tem boa precisão em toda linguagem financeira. Essas afirmações exigem validação externa e avaliações com perguntas representativas.
+
+## Versão 0.2: robustez, consultas e continuidade
+
+**Problemas encontrados na 0.1.** “Quanto saiu no mês passado?” era recusado. “Contas que vencem em 30 dias?” devolvia a mesma resposta genérica de um pedido de escrita. Um mês sem dados na demonstração aparecia como *indisponível*, misturando ausência de dados com falha. O prompt do modelo dizia para usar o mês atual quando faltava o período, e isso acontecia sem aviso.
+
+**Decisão explícita do planejador.** O plano passou a ter `decision`: `QUERY`, `CLARIFY_PERIOD`, `CLARIFY_TOPIC`, `UNSUPPORTED`, `WRITE_REQUEST` ou `OTHER_COMPANY`. O Java associa cada decisão a uma mensagem fixa e **nunca mostra texto do modelo**. Um plano incoerente, como uma recusa acompanhada de consultas, decisão nula, nenhuma consulta ou mais de três consultas, vira `invalid_plan` e nada é executado. Trade-off: as respostas ficam menos fluidas, mas não há como uma injeção de prompt colocar texto na tela.
+
+**Defaults resolvidos e anunciados em Java.** Se o modelo devolve `month=null` ou `days=null`, `FinancialTools.resolve` escolhe o mês atual ou 30 dias, e a resposta diz que esse padrão foi usado. Um período válido, mas fora do contrato, como 2020-01 ou 120 dias, gera um pedido de esclarecimento com o intervalo aceito. Um argumento malformado gera `invalid_plan`.
+
+**Status das evidências:** `ok`, `empty`, `unavailable` e `info`. Ausência de registros não é falha, e falha não é zero.
+
+**Novas consultas sem novas rotas.** A comparação usa os campos `previous*` que `/finance/summary` já devolve. O Agent mostra os dois meses e diz se o resultado foi maior ou menor, usando `compareTo`, mas **não calcula diferenças**. As contas vencidas e as que vencem hoje usam `group=OVERDUE|TODAY` no mesmo endpoint de pendências. O adaptador rejeita uma resposta cujo `group` seja diferente do pedido. `CONCEPTS` é um texto fixo, sem chamada ao Fintry, que explica saldo atual × resultado realizado × saldo projetado. As definições foram conferidas no `ReportService`: a projeção começa no saldo atual e só inclui atrasados com `includeOverdue=true`.
+
+**Contexto de conversa.** Fica guardado na sessão HTTP do próprio Agent (`FINTRY_AGENT_SESSION`), que já existia para o CSRF. Guarda apenas a estrutura das consultas executadas (`kind` e período resolvido, até três) junto com `userId`, `companyId` e o horário. Antes de passar o contexto ao planejador, o agente confere se o usuário e a empresa são os mesmos e se o contexto tem menos de 10 minutos. O contexto é apagado em `POST /api/conversation/reset` (botão *Nova conversa*), em 401/403 e na expiração da sessão, depois de 15 minutos. Valores, texto da pergunta e cookie não são guardados, então **toda continuação consulta os valores novamente**. O modelo recebe só algo como `SUMMARY(month=2026-11, ...)`. O plano traz `followUp`, que apenas informa à interface que houve continuação e não concede nenhum acesso. Trade-off: só existe memória de um turno e ela não sobrevive a mais de uma instância sem sessão compartilhada. Isso basta para “E no mês anterior?” e evita um banco de conversas.
+
+**Avaliação.** Veja [evaluation.md](evaluation.md). O conjunto avalia o resultado final do agente (planejador + validação + gateway), não o JSON bruto do plano. Assim, um esclarecimento conta como correto venha ele do modelo ou do Java.
+
+## Roteiro
+
+1. **Homologação real** (bloqueante): proxy + instância de desenvolvimento do Fintry + duas empresas; executar o roteiro de [fintry-integration.md](fintry-integration.md).
+2. **Avaliação com modelo real**, autorizada pelo dono do projeto: rodar `RealModelPlanningEvaluationTest`, registrar a acurácia por categoria e ajustar o prompt.
+3. **Métricas agregadas** (Micrometer/Actuator protegido) a partir da linha `fintry.agent.metrics`, com alertas para aumento de `failed` ou `invalid_plan`.
+4. **Resposta redigida pelo modelo sobre as evidências**, opcional e com verificação de que todo número citado existe nas evidências.
+5. **Períodos livres e categorias**, somente se o Fintry expuser um contrato GET adequado (`/reports?start&end` existe, mas é paginado por lançamento e exigiria definir totais confiáveis).
+
+## Mais perguntas de entrevista
+
+**Por que guardar a estrutura da consulta e não a resposta?** Um valor de dez minutos atrás pode já estar errado, e ainda ficaria guardado um dado sensível. Guardando só a estrutura, a continuação consulta o Fintry de novo, com a autorização atual.
+
+**Como você sabe se o modelo melhorou ou piorou?** Pelo conjunto versionado de 47 casos com resultado e consultas esperados. As categorias de segurança precisam acertar 100%, mesmo que a acurácia geral oscile.

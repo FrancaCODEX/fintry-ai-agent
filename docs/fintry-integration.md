@@ -26,14 +26,15 @@ Antes de cada ferramenta, o Agent chama `/auth/me` novamente e exige a mesma ide
 | Ferramenta | Requisição | Campos aproveitados |
 | --- | --- | --- |
 | Saldo/resumo mensal | `GET /api/v1/finance/summary?month=AAAA-MM` | `balance`, `income`, `expense`, `result` |
-| Contas a pagar | `GET /api/v1/finance/pending?group=NEXT7&type=EXPENSE&page=0&size=20` | `today`, `content[].description/dueDate/remainingAmount`, `totalElements`, `totals.expense` |
+| Comparação mensal (0.2) | `GET /api/v1/finance/summary?month=AAAA-MM` | `income`, `expense`, `result`, `previousIncome`, `previousExpense`, `previousResult` |
+| Contas a pagar | `GET /api/v1/finance/pending?group=OVERDUE\|TODAY\|NEXT7&type=EXPENSE&page=0&size=20` | `today`, `group` (deve ser igual ao pedido), `content[].description/dueDate/remainingAmount`, `totalElements`, `totals.expense` |
 | Projeção | `GET /api/v1/reports/forecast?days=N&includeOverdue=false` | `start`, `end`, `openingBalance`, `closingBalance`, `pendingIncome`, `pendingExpense`, `minimumBalance`, `firstNegativeDate` |
 
 Fontes no [código inspecionado](https://github.com/FrancaCODEX/fintry-finance/tree/9c6c099c0df21553d42c95548d39557c1aa9bbf5/backend/src/main/java/com/fintry): `auth/AuthController.java`, `auth/AuthService.java`, `auth/CurrentUser.java`, `auth/SessionAccessFilter.java`, `shared/security/SecurityConfig.java`, `finance/FinanceController.java`, `finance/FinanceService.java`, `finance/PendingController.java`, `finance/PendingService.java`, `report/ReportController.java`, `report/ReportService.java`.
 
 `balance` é a soma dos saldos atuais, mesmo quando o resumo é de um mês anterior. Por isso a ferramenta de saldo é separada da explicação de realizados mensais. `income/expense/result` usam pagamentos efetivados no mês. Não reinterpretamos `flow` do resumo como previsão: ele é histórico.
 
-`NEXT7` começa amanhã e termina em D+7. `UPCOMING` no Fintry inclui hoje, mas não é usado nesta entrega. O Agent deixa esse recorte explícito. Os totais vêm da agregação completa do Fintry; a lista é limitada à primeira página e a interface sinaliza truncamento.
+Para um mês sem registros, `summary` devolve zeros com HTTP 200. O Agent mostra isso como **sem registros**, não como falha. Os campos `previous*` são opcionais na leitura: se faltarem, a comparação falha explicitamente e não usa zero. `OVERDUE` = vencimento anterior a hoje; `TODAY` = hoje. `NEXT7` começa amanhã e termina em D+7. `UPCOMING` no Fintry inclui hoje, mas não é usado nesta entrega. O Agent deixa esse recorte explícito. Os totais vêm da agregação completa do Fintry; a lista é limitada à primeira página e a interface sinaliza truncamento.
 
 `forecast(days=N)` inclui hoje e D+N (N+1 pontos diários). Não inclui atrasados porque `includeOverdue=false`; essa limitação é sempre exibida. O Agent não recalcula previsões.
 

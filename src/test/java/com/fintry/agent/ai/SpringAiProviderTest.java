@@ -23,9 +23,9 @@ class SpringAiProviderTest {
                 List.of(
                     new Generation(
                         new AssistantMessage(
-                            "{\"queries\":[{\"kind\":\"SUMMARY\",\"month\":\"2026-11\",\"days\":null}]}")))));
+                            "{\"decision\":\"QUERY\",\"queries\":[{\"kind\":\"SUMMARY\",\"month\":\"2026-11\",\"days\":null,\"window\":null}]}")))));
     var provider = new SpringAiProvider(ChatClient.create(model));
-    var plan = provider.plan("Quanto entrou e saiu neste mês?", LocalDate.of(2026, 11, 6));
+    var plan = provider.plan("Quanto entrou e saiu neste mês?", LocalDate.of(2026, 11, 6), List.of());
     assertThat(plan.queries())
         .singleElement()
         .satisfies(q -> assertThat(q.kind()).isEqualTo(Kind.SUMMARY));
@@ -44,9 +44,9 @@ class SpringAiProviderTest {
             new ChatResponse(
                 List.of(
                     new Generation(
-                        new AssistantMessage("{\"queries\":[{\"kind\":\"PAY_ENTRY\"}]}")))));
+                        new AssistantMessage("{\"decision\":\"QUERY\",\"queries\":[{\"kind\":\"PAY_ENTRY\"}]}")))));
     var provider = new SpringAiProvider(ChatClient.create(model));
-    assertThatThrownBy(() -> provider.plan("Pague", LocalDate.now()))
+    assertThatThrownBy(() -> provider.plan("Pague", LocalDate.now(), List.of()))
         .isInstanceOf(RuntimeException.class);
   }
 }

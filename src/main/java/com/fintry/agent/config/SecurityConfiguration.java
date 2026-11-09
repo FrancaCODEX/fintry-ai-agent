@@ -24,7 +24,7 @@ public class SecurityConfiguration {
                         "/api/csrf",
                         "/health")
                     .permitAll()
-                    .requestMatchers(HttpMethod.POST, "/api/chat")
+                    .requestMatchers(HttpMethod.POST, "/api/chat", "/api/conversation/reset")
                     .permitAll()
                     .anyRequest()
                     .denyAll())

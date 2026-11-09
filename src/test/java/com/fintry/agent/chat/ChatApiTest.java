@@ -4,6 +4,8 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -92,6 +94,64 @@ class ChatApiTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(" ".repeat(8193)))
         .andExpect(status().isPayloadTooLarge());
+  }
+
+  private org.springframework.test.web.servlet.ResultActions ask(
+      org.springframework.mock.web.MockHttpSession session, String message) throws Exception {
+    return mvc.perform(
+        post("/api/chat")
+            .session(session)
+            .with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(java.util.Map.of("message", message))));
+  }
+
+  @Test
+  void followUpUsesOnlyTheSameSessionAndRequeriesValues() throws Exception {
+    var previousMonth =
+        java.time.YearMonth.now(java.time.ZoneId.of("America/Sao_Paulo")).minusMonths(1).toString();
+    var mine = new org.springframework.mock.web.MockHttpSession();
+    ask(mine, "Quanto entrou e saiu neste mês?").andExpect(jsonPath("$.outcome").value("answered"));
+    ask(mine, "E no mês anterior?")
+        .andExpect(jsonPath("$.outcome").value("answered"))
+        .andExpect(jsonPath("$.contextUsed").value(true))
+        .andExpect(jsonPath("$.evidence[0].title").value("Resumo do mês " + previousMonth))
+        .andExpect(jsonPath("$.evidence[0].explanation").value(org.hamcrest.Matchers.containsString("15.000,00")));
+    // Another browser session never sees this context.
+    ask(new org.springframework.mock.web.MockHttpSession(), "E no mês anterior?")
+        .andExpect(jsonPath("$.outcome").value("clarification"))
+        .andExpect(jsonPath("$.evidence").isEmpty());
+    // Explicit reset clears the context of this session.
+    mvc.perform(post("/api/conversation/reset").session(mine).with(csrf()))
+        .andExpect(status().isOk());
+    ask(mine, "E no mês anterior?").andExpect(jsonPath("$.outcome").value("clarification"));
+  }
+
+  @Test
+  void contextStoredInSessionHasNoFinancialValuesOrText() throws Exception {
+    var session = new org.springframework.mock.web.MockHttpSession();
+    ask(session, "Quanto entrou e saiu neste mês?");
+    var stored = session.getAttribute(ChatController.CONTEXT);
+    assertThat(stored).isInstanceOf(com.fintry.agent.orchestration.ConversationContext.class);
+    var context = (com.fintry.agent.orchestration.ConversationContext) stored;
+    assertThat(context.queries()).singleElement().satisfies(q -> assertThat(q.kind().name()).isEqualTo("SUMMARY"));
+    assertThat(context.toString()).doesNotContain("18000", "demo-company", "Quanto");
+  }
+
+  @Test
+  void resetRequiresCsrf() throws Exception {
+    mvc.perform(post("/api/conversation/reset")).andExpect(status().isForbidden());
+  }
+
+  @Test
+  void clarificationAndRefusalAreDistinctOutcomesWithSuggestions() throws Exception {
+    var session = new org.springframework.mock.web.MockHttpSession();
+    ask(session, "Quanto entrou em outubro?")
+        .andExpect(jsonPath("$.outcome").value("clarification"))
+        .andExpect(jsonPath("$.suggestions").isNotEmpty());
+    ask(session, "Pague o aluguel").andExpect(jsonPath("$.outcome").value("refused"));
+    ask(session, "Qual o saldo da empresa B?").andExpect(jsonPath("$.outcome").value("refused"));
+    ask(session, "Me conte uma piada").andExpect(jsonPath("$.outcome").value("unsupported"));
   }
 
   @Test

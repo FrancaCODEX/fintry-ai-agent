@@ -1,6 +1,6 @@
 # Fintry AI Agent
 
-Assistente financeiro de **somente consulta**, com Java 21, Spring Boot, Spring AI e uma interface responsiva servida pela própria aplicação. Versão **0.1.0**.
+Assistente financeiro de **somente consulta**, com Java 21, Spring Boot, Spring AI e uma interface responsiva servida pela própria aplicação. Versão **0.2.0**.
 
 Projeto pessoal para praticar IA aplicada, integração HTTP, isolamento entre empresas, testes e decisões de arquitetura explicáveis. O Fintry Finance continua independente: nenhum código, interface ou banco dele foi alterado.
 
@@ -27,10 +27,14 @@ Perguntas prontas:
 - “Quais contas vencem nos próximos sete dias?”
 - “Quanto entrou e saiu neste mês?”
 - “Como está meu fluxo de caixa previsto?”
+- “Quais contas estão vencidas?” / “O que vence hoje?”
+- “Compare este mês com o anterior”
+- “Esse saldo já considera as contas a vencer?”
+- Continuações: “E no mês anterior?”, “Agora mostre os próximos 60 dias.”
 
-O provedor simulado é um roteador determinístico limitado, não um modelo generativo. Trabalha com as perguntas acima e pequenas variações; não mantém memória de conversa. Para outro período, use `resumo AAAA-MM` ou `projeção de caixa em 15 dias`. A demonstração contém resumo somente do mês atual; meses sem dados retornam uma limitação explícita. As datas seguem `America/Sao_Paulo`.
+O provedor simulado é um roteador determinístico limitado, não um modelo generativo. Ele entende as perguntas acima e variações próximas, como `resumo AAAA-MM`, “outubro de 2026”, `10/2026`, “mês passado” e “projeção em 15 dias”. Quando o período é ambíguo, como um mês sem ano, uma semana ou vencimentos em 30 dias, ele **pede esclarecimento** e não escolhe outro período. As datas seguem `America/Sao_Paulo`.
 
-Dados da demonstração: saldo atual R$ 12.500,00; entradas realizadas R$ 18.000,00; saídas R$ 8.500,00; resultado R$ 9.500,00. O saldo de abertura do mês é implicitamente R$ 3.000,00. Há duas despesas pendentes, R$ 1.800,00 em D+2 e R$ 700,00 em D+5, e uma receita de R$ 5.000,00 em D+7. Na projeção de 30 dias, o saldo final é R$ 15.000,00 e o menor saldo é R$ 10.000,00. Esses cálculos ficam no serviço financeiro demonstrativo, nunca no modelo.
+Dados da demonstração: saldo atual R$ 12.500,00; mês atual com entradas realizadas de R$ 18.000,00, saídas de R$ 8.500,00 e resultado de R$ 9.500,00; mês anterior com entradas de R$ 15.000,00, saídas de R$ 9.800,00 e resultado de R$ 5.200,00. Meses mais antigos devolvem zero, como o Fintry real faz quando não há registros, e aparecem como **sem registros**, não como falha. Há uma conta vencida de R$ 320,00 em D-3 e nenhuma conta vencendo hoje. O saldo de abertura do mês é implicitamente R$ 3.000,00. Há duas despesas pendentes, R$ 1.800,00 em D+2 e R$ 700,00 em D+5, e uma receita de R$ 5.000,00 em D+7. Na projeção de 30 dias, o saldo final é R$ 15.000,00 e o menor saldo é R$ 10.000,00. Esses cálculos ficam no serviço financeiro demonstrativo, nunca no modelo.
 
 ## Docker
 
@@ -73,6 +77,9 @@ Essa configuração exige uma sessão válida do usuário no Fintry; sozinha nã
 | Parte | Situação nesta versão |
 | --- | --- |
 | Chat, ferramentas, períodos e evidências | Implementados e testados de ponta a ponta em demonstração |
+| Comparação mensal, vencidas e de hoje, conceitos (0.2) | Implementados sobre os mesmos endpoints GET; testados com contrato local |
+| Contexto de conversa (0.2) | Sessão HTTP do próprio Agent, só a estrutura da consulta anterior, 10 min |
+| Avaliação versionada (0.2) | 47 casos; o simulador acerta todos; o modelo real é opcional e **não foi executado** |
 | Serviço financeiro demonstrativo | Fictício, determinístico e identificado na tela |
 | Provedor de demonstração | Simulado; não é LLM |
 | Provedor Spring AI por API | Implementado; contrato testado com resposta de modelo controlada, sem consumo pago |
@@ -103,12 +110,12 @@ sequenceDiagram
 
 - **Modelo:** interpreta linguagem e propõe ferramentas e argumentos. Não é fonte de valores, calculadora, autenticador ou autorizador.
 - **Agente:** coordena validação de identidade, planejamento e execução limitada. A saída do modelo é entrada não confiável.
-- **Ferramentas:** catálogo Java tipado de saldo, resumo, pendências e projeção; verificam argumentos e permissão, formatam evidências sem gerar números.
+- **Ferramentas:** catálogo Java tipado de saldo, resumo, comparação, pendências (vencidas/hoje/7 dias), projeção e conceitos; verificam argumentos e permissão, formatam evidências sem gerar números.
 - **Serviços financeiros:** calculam saldo, realizados, pendências e projeções. Na integração real, esses cálculos continuam no Fintry Finance; na demonstração, no `DemoFintryGateway`.
 - **Integração:** `FintryGateway` separa o domínio da API HTTP e dos dados fictícios.
 - **Chat:** apresentação de texto e evidências, com `textContent`, sem executar HTML retornado pelo modelo ou pelas descrições financeiras.
 
-Pacotes por responsabilidade funcional: `chat`, `orchestration`, `ai`, `tools`, `integration`, `config`. É uma aplicação única, sem banco próprio, memória de conversa ou microsserviços. O planejamento estruturado substitui um loop autônomo aberto: o modelo propõe uma lista limitada e o Java executa explicitamente cada ferramenta. A explicação final é determinística para manter números e fontes rastreáveis. Veja as [decisões e roteiro para entrevista](docs/architecture.md).
+Pacotes por responsabilidade funcional: `chat`, `orchestration`, `ai`, `tools`, `integration`, `config`. É uma aplicação única, sem banco próprio ou microsserviços. A memória se limita à consulta anterior na sessão do próprio usuário. O planejamento estruturado substitui um loop autônomo aberto: o modelo propõe uma lista limitada e o Java executa explicitamente cada ferramenta. A explicação final é determinística para manter números e fontes rastreáveis. Veja as [decisões e roteiro para entrevista](docs/architecture.md).
 
 ## Limites e segurança
 
@@ -121,7 +128,9 @@ Pacotes por responsabilidade funcional: `chat`, `orchestration`, `ai`, `tools`, 
 | HTTP Fintry | Conexão 2 s, requisição 5 s, corpo até 1 MiB, sem redirects |
 | IA | Conexão 2 s, leitura 10 s, 600 tokens de saída, uma tentativa |
 | Resumo | Mês atual ou últimos 24 meses; dados disponíveis no serviço |
-| Pendências | Amanhã até hoje+7 inclusive; primeiras 20 despesas e total completo do servidor |
+| Comparação | Mês informado × anterior, os dois na mesma resposta do Fintry |
+| Pendências | Vencidas, hoje, ou amanhã até hoje+7; primeiras 20 despesas e total completo do servidor |
+| Contexto | Só kind/período das até 3 consultas anteriores; 10 min; mesmo usuário e empresa; apagado no reset, no 401/403 e no fim da sessão |
 | Projeção | Hoje até hoje+N inclusive, N=1–90; exclui atrasados |
 
 Sessão ou permissão inválida interrompe a consulta. Falha de uma ferramenta é exibida sem inventar valores; uma resposta parcial mantém os resultados das ferramentas que funcionaram. Não há campos de empresa ou usuário nos argumentos das ferramentas. Cabeçalhos `X-Company-Id` e similares não concedem acesso. Injeções de prompt não podem adicionar métodos de escrita ou caminhos HTTP arbitrários porque eles não existem neste processo.
@@ -137,7 +146,7 @@ docker compose config --quiet
 docker build -t fintry-ai-agent:local .
 ```
 
-Testes cobrem roteamento simulado, conversão estruturada do Spring AI, execução e evidências, Brasília na virada UTC, argumentos maliciosos, mensagens excessivas, CSRF, ferramentas inexistentes, empresas diferentes em consultas simultâneas, sessão expirada, troca de empresa, permissão revogada, indisponibilidade, campos financeiros ausentes e resposta HTTP excessiva. Não exigem API paga nem banco. CI repete verificação Java, sintaxe JS e build Docker.
+Testes (72, mais 1 avaliação paga desativada por padrão) cobrem a avaliação versionada, decisões do planejador, contexto isolado por sessão/usuário/empresa, roteamento simulado, conversão estruturada do Spring AI, execução e evidências, Brasília na virada UTC, argumentos maliciosos, mensagens excessivas, CSRF, ferramentas inexistentes, empresas diferentes em consultas simultâneas, sessão expirada, troca de empresa, permissão revogada, indisponibilidade, campos financeiros ausentes e resposta HTTP excessiva. Não exigem API paga nem banco. CI repete verificação Java, sintaxe JS e build Docker.
 
 Se o Java iniciado pelo aplicativo desktop no Windows falhar com `Unable to establish loopback connection`, um diretório temporário curto para sockets resolve o problema observado neste ambiente: `New-Item -ItemType Directory -Force C:\Temp\fintry-java` e `$env:JAVA_TOOL_OPTIONS='-Djdk.net.unixdomain.tmpdir=C:/Temp/fintry-java'`, antes de executar o Wrapper. Isso é uma configuração local de execução, não uma dependência da aplicação.
 
@@ -149,6 +158,21 @@ Java 21 + Spring Boot **3.5.16** + Spring AI **1.1.8**, com BOM do Spring AI, pa
 - [Release estável Spring AI 1.1.8](https://spring.io/blog/2026/06/12/spring-ai-1-1-8-1-0-9-avaialble-now/).
 - [Requisitos Java/Maven do Boot 3.5.16](https://docs.spring.io/spring-boot/3.5/system-requirements.html).
 
+## Resultados possíveis de uma pergunta
+
+| `outcome` | Significado |
+| --- | --- |
+| `answered` | Todas as consultas funcionaram |
+| `partial` | Parte funcionou; as que falharam aparecem como indisponíveis, sem valores estimados |
+| `no_data` | O Fintry respondeu, mas não há registros no período |
+| `failed` | Todas as consultas falharam na integração |
+| `clarification` | Período ou assunto ambíguo, ou fora do intervalo suportado; nada foi executado |
+| `refused` | Pedido de escrita ou de outra empresa |
+| `unsupported` | Fora do escopo, ou tentativa de obter instruções, SQL ou credenciais |
+| `invalid_plan` | O plano do modelo não passou na validação do backend; nada foi executado |
+
+Cada pergunta gera uma linha `fintry.agent.metrics` com o resultado, a quantidade de ferramentas e de falhas, o uso de contexto e a duração. O log não contém mensagem, cookie, identidade ou valores. Veja [avaliação e métricas](docs/evaluation.md).
+
 ## Próximos incrementos
 
-Homologar o proxy com uma instância de desenvolvimento do Fintry e duas contas de empresas distintas; testar provedores reais com um conjunto de perguntas e medir custo/latência; adicionar períodos arbitrários apenas quando houver contratos financeiros adequados. Memória de conversa exige armazenamento e isolamento explícitos e fica para outra entrega.
+Veja o roteiro em [docs/architecture.md](docs/architecture.md#roteiro).

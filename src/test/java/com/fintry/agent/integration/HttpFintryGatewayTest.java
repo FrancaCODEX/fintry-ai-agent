@@ -172,10 +172,10 @@ class HttpFintryGatewayTest {
     var user = gateway.authenticate("JSESSIONID=a");
     financialBody =
         """
-        {"today":"2026-11-06","totalElements":21,"totals":{"expense":2500},
+        {"today":"2026-11-06","group":"NEXT7","totalElements":21,"totals":{"expense":2500},
          "content":[{"description":"Aluguel","dueDate":"2026-11-08","remainingAmount":1800}]}
         """;
-    var result = gateway.pending(user);
+    var result = gateway.pending(user, com.fintry.agent.tools.ToolRequest.DueWindow.NEXT7);
     assertThat(result.items()).hasSize(1);
     assertThat(result.totalElements()).isEqualTo(21);
     assertThat(result.expense()).isEqualByComparingTo("2500");
@@ -195,5 +195,33 @@ class HttpFintryGatewayTest {
     assertThat(result.closingBalance()).isEqualByComparingTo("15000");
     assertThat(requests.getLast())
         .isEqualTo("GET /api/v1/reports/forecast?days=30&includeOverdue=false");
+  }
+
+  @Test
+  void summaryReadsPreviousMonthFieldsWhenPresent() {
+    var user = gateway.authenticate("JSESSIONID=a");
+    financialBody =
+        "{\"balance\":1,\"income\":2,\"expense\":3,\"result\":-1,\"previousIncome\":5,"
+            + "\"previousExpense\":4,\"previousResult\":1}";
+    var result = gateway.summary(user, YearMonth.of(2026, 11));
+    assertThat(result.hasPrevious()).isTrue();
+    assertThat(result.previousResult()).isEqualByComparingTo("1");
+    financialBody = "{\"balance\":1,\"income\":2,\"expense\":3,\"result\":-1,\"previousIncome\":\"5\"}";
+    assertThatThrownBy(() -> gateway.summary(user, YearMonth.of(2026, 11))).hasMessageContaining("502");
+  }
+
+  @Test
+  void pendingUsesRequestedWindowAndRejectsAMismatchedGroup() {
+    var user = gateway.authenticate("JSESSIONID=a");
+    financialBody =
+        """
+        {"today":"2026-11-06","group":"OVERDUE","totalElements":0,"totals":{"expense":0},"content":[]}
+        """;
+    var overdue = gateway.pending(user, com.fintry.agent.tools.ToolRequest.DueWindow.OVERDUE);
+    assertThat(overdue.totalElements()).isZero();
+    assertThat(requests.getLast())
+        .isEqualTo("GET /api/v1/finance/pending?group=OVERDUE&type=EXPENSE&page=0&size=20");
+    assertThatThrownBy(() -> gateway.pending(user, com.fintry.agent.tools.ToolRequest.DueWindow.TODAY))
+        .hasMessageContaining("502");
   }
 }
